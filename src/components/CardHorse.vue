@@ -4,45 +4,44 @@
     :class="horseClasses"
     :style="horseStyle"
   >
-    {{ suit }}
+    {{ horse }}
   </div>
 </template>
 
 <script>
+import { mapGetters } from "vuex"
+
 export default {
   name: "CardHorse",
   props: {
-    suit: String,
+    horse: String,
     colorClass: String,
     lane: Number,
     winner: String
   },
   computed: {
+    ...mapGetters({
+      position: "getPosition",
+      isMoving: "checkMovement",
+    }),
     horseClasses() {
       const red = this.colorClass === "suit-red"
-      const isWinner = this.suit === this.winner
+      const isWinner = this.horse === this.winner
       return {
         "suit-red": red,
         "suit-black": !red,
-        "shrinky": this.isMoving,
-        "growy": !this.isMoving,
+        "shrinky": this.isMoving(this.horse),
+        "growy": !this.isMoving(this.horse),
         "jumpy": isWinner
       }
     },
-    isMoving() {
-      return this.$store.getters.checkMovement(this.suit)
-    },
-    horsePosition() {
-      return this.$store.getters.checkPosition(this.suit)
-    },
     horseStyle() {
       return {
-        gridColumn: this.horsePosition + 1,
+        gridColumn: this.position(this.horse) + 1,
         gridRow: this.lane + 1,
       }
     },
-
-  }
+  },
 }
 </script>
 

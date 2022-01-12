@@ -20,22 +20,22 @@ export default new Vuex.Store({
     horses: {
       "♦︎": {
         colorClass: "suit-red",
-        position: null,
+        position: 0,
         isMoving: false
       },
       "♥︎": {
         colorClass: "suit-red",
-        position: null,
+        position: 0,
         isMoving: false
       },
       "♠︎": {
         colorClass: "suit-black",
-        position: null,
+        position: 0,
         isMoving: false
       },
       "♣︎": {
         colorClass: "suit-black",
-        position: null,
+        position: 0,
         isMoving: false
       }
     },
@@ -43,6 +43,8 @@ export default new Vuex.Store({
     falterCards: null,
     falterPos: null,
     cardPlayed: null,
+    falterHappening: false,
+    falteringHorse: null,
     winner: null,
   },
   mutations: {
@@ -53,8 +55,8 @@ export default new Vuex.Store({
       state.cardPlayed = ""
       state.winner = null
     },
-    setHorsePos(state, { horse, pos }) {
-      state.horses[horse].position = pos
+    changeHorsePosition(state, { horse, direction }) {
+      state.horses[horse].position += direction
     },
     pushCardToDeck(state, card) {
       state.deck.push(card)
@@ -70,6 +72,12 @@ export default new Vuex.Store({
     },
     setHorseMovement(state, { horse, isMoving }) {
       state.horses[horse].isMoving = isMoving
+    },
+    setFalterState(state, falterState) {
+      state.falterHappening = falterState
+    },
+    setFalteringHorse(state, horse) {
+      state.falteringHorse = horse
     },
     incrementFalterPos(state) {
       state.falterPos++
@@ -87,7 +95,7 @@ export default new Vuex.Store({
     getCardPlayed: (state) => {
       return state.cardPlayed
     },
-    checkPosition: (state) => (horse) => {
+    getPosition: (state) => (horse) => {
       return state.horses[horse].position
     },
     checkMovement: (state) => (horse) => {
@@ -96,11 +104,12 @@ export default new Vuex.Store({
     checkFalterPos: (state) => (falterCardPos) => {
       return falterCardPos < state.falterPos
     },
+    checkFalterState: (state) => {
+      return state.falterHappening
+    },
     isTimeForFalter: (state) => {
       const horses = [...Object.keys(state.horses)]
-      return horses.every((h) => {
-        return state.horses[h].position > state.falterPos
-      })
+      return horses.every(h => state.horses[h].position > state.falterPos)
     },
     getTheHorses: (state) => {
       return state.horses
@@ -116,8 +125,6 @@ export default new Vuex.Store({
 
       const suits = [...Object.keys(this.state.horses)]
       suits.forEach((suit) => {
-        commit("setHorsePos", { horse: suit, pos: 0 })
-
         for (let i = 0; i < this.state.deckSize; i++) {
           commit("pushCardToDeck", suit)
         }
@@ -137,28 +144,44 @@ export default new Vuex.Store({
       const card = this.state.deck[last]
       commit("setCardPlayed", card)
       commit("drawCardFromDeck", last)
-      commit("setHorseMovement", { horse: card, isMoving: true })
       return card
     },
 
-    moveHorse({ commit }, horse) {
-      const horsePosition = this.state.horses[horse].position + 1
-      commit("setHorsePos", { horse: horse, pos: horsePosition })
-      commit("setHorseMovement", { horse: horse, isMoving: false })
+    handleTurn({ dispatch, commit }, horse) {
 
-      if (horsePosition === this.state.trackLength) {
-        commit("setWinner", horse)
-        return horse
-      }
+      dispatch("moveHorse", { horse: horse, direction: 1 })
+        .then((newPosition) => {
+          commit("setHorseMovement", { horse: horse, isMoving: false })
 
-      if (this.getters.isTimeForFalter) {
-        const falteringHorse = this.state.falterCards[this.state.falterPos - 1]
-        const falteringHorsePos = this.state.horses[falteringHorse].position - 1
-        commit("setHorseMovement", { horse: falteringHorse, isMoving: true })
-        commit("setHorsePos", { horse: falteringHorse, pos: falteringHorsePos })
-        commit("setHorseMovement", { horse: falteringHorse, isMoving: false })
-        commit("incrementFalterPos")
-      }
+          if (newPosition === this.state.trackLength) {
+            commit("setWinner", horse)
+          }
+
+          if (this.getters.isTimeForFalter) {
+            const falteringHorse = this.state.falterCards[this.state.falterPos - 1]
+            commit("incrementFalterPos")
+            commit("setFalterState", true)
+            commit("setFalteringHorse", falteringHorse)
+          }
+        })
     },
+
+    moveHorse({ commit }, horse) {
+      return new Promise((resolve) => {
+        commit("setHorseMovement", { horse: horse.horse, isMoving: true })
+        setTimeout(() => {
+          commit("changeHorsePosition", horse)
+          resolve(this.getters.getPosition(horse.horse))
+        }, 30)
+      })
+    },
+
+    executeFalter({ dispatch, commit }) {
+      dispatch("moveHorse", { horse: this.state.falteringHorse, direction: -1 })
+        .then(() => {
+          commit("setHorseMovement", { horse: this.state.falteringHorse, isMoving: false })
+          commit("setFalterState", false)
+        })
+    }
   },
 })

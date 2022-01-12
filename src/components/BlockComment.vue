@@ -4,19 +4,27 @@
     class="block-comment"
     :style="commentsStyle"
   >
-    <h3
-      v-if="cardPlayed && !winner"
+    <h4
+      v-if="cardPlayed && !winner && !isFalterHappening"
       class="comment-headline"
     >
       <span v-html="horseHTML(cardPlayed)" />
       {{ accelerationPhrases[phraseIndex] }} und liegt jetzt auf Platz {{ $store.state.trackLength - position(cardPlayed) }}!
-    </h3>
+    </h4>
+
     <h1 v-if="winner">
       <span v-html="horseHTML(cardPlayed)" /> GEWINNT!
     </h1>
+
+    <h1 v-if="isFalterHappening">
+      <!-- <span v-html="horseHTML(cardPlayed)" /> GEWINNT! -->
+      AUWEIA!!!
+    </h1>
+
     <p
       v-if="cardPlayed && !winner"
       class="comment-body"
+      :style="commentsBodyStyle"
     >
       <span v-html="renderPositionComment(positionCommentType(cardPlayed), cardPlayed)" />
     </p>
@@ -47,19 +55,24 @@ export default {
   },
   computed: {
     ...mapGetters({
-      position: "checkPosition",
+      position: "getPosition",
       horses: "getTheHorses",
-      falterPosition: "checkFalterPosition",
-      isTimeForFalter: "isTimeForFalter"
+      isFalterHappening: "checkFalterState"
     }),
     commentsStyle() {
       if (!this.cardPlayed) return { opacity: 0 }
       return { opacity: 1 }
-    }
+    },
+    commentsBodyStyle() {
+      if (this.isFalterHappening) return { opacity: 0 }
+      return { opacity: 1 }
+    },
   },
+
   updated() {
     this.phraseIndex = Math.floor(Math.random() * this.accelerationPhrases.length)
   },
+
   methods: {
     horseHTML(horse) {
       return `<span class="${this.horses[horse].colorClass}">${horse}</span>`
@@ -81,6 +94,7 @@ export default {
         (horse !== currentHorse)
       })
       if (horsesSame.length) return horsesSame
+
       return "mediocre"
     },
 
@@ -93,7 +107,8 @@ export default {
       if (typeof(commentType) === "string") return comments[commentType]
 
       const otherHorses = commentType.map((horse) => this.horseHTML(horse[0])).join(" und ")
-      const catchingUp = `Naaa, ${otherHorses}, jetzt heißt es aber die alten Gehstummel in die Hand nehmen, das ${this.horseHTML(currentHorse)} kommt gefährlich nahe!`
+      const catchingUp = `${this.horseHTML(currentHorse)} holt auf und liegt jetzt gleichauf mit ${otherHorses}!`
+      // const catchingUp = `Naaa, ${otherHorses}, jetzt heißt es aber die alten Gehstummel in die Hand nehmen, das ${this.horseHTML(currentHorse)} kommt gefährlich nahe!`
       return catchingUp
     }
   }
